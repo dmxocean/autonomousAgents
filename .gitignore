@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+.env/
+
+# Data files
+*.log
+*.docx
+*.sqlite
+*.db
+README.md
+
+# Exclude specific directories
+AAgent/
+backup/
+tests/
+.private/
+
+data/**/*.csv
+logs/**/*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+
+# Jupyter Notebook
+.ipynb_checkpoints

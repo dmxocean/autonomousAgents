@@ -1,0 +1,8 @@
+{
+    "packs": [
+        {
+            "agent_config_file": "AAgent-Critter.json",
+            "num_agents": 10
+        }
+    ]
+}

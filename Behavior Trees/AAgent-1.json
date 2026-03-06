@@ -1,0 +1,21 @@
+{
+  "Server": {
+    "host": "127.0.0.1",
+    "port": 4649
+  },
+  "AgentParameters": {
+    "type": "AAgentAstronautAlpha",
+    "name": "Astronaut",
+    "team": "",
+    "interactable": true,
+    "spawn_area": "",
+    "spawn_point": "SpawnPoint0",
+    "debug_mode": true,
+    "manual_control": false,
+    "initial_task": "",
+    "ray_perception_sensor_param": [2,45,0,5]
+  },
+  "Misc": {
+    "python_gui_monitor": false
+  }
+}
