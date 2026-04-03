@@ -7,6 +7,9 @@ import json
 import Sensors
 import Goals_BT_Basic
 import BTRoam
+import BTAlone
+import BTCritter
+import BTCollectAndRun
 
 import tkinter as tk
 from threading import Thread
@@ -154,7 +157,6 @@ class AAgent:
         self.connection_ready = False
 
         # Reference to the possible goals the agent can execute
-        # -- COMMANDS TO EXECUTE --
         self.goals = {
             "DoNothing": Goals_BT_Basic.DoNothing(self),
             "ForwardStop": Goals_BT_Basic.ForwardStop(self),
@@ -164,7 +166,10 @@ class AAgent:
 
         # Reference to the possible behaviour trees the agent can execute
         self.bts = {
-            "BTRoam": BTRoam.BTRoam(self)
+            "BTRoam": BTRoam.BTRoam(self),
+            "BTAlone": BTAlone.BTAlone(self),
+            "BTCritter": BTCritter.BTCritter(self),
+            "BTCollectAndRun": BTCollectAndRun.BTCollectAndRun(self)   # bt:BTCollectAndRun
         }
 
         # Active goal

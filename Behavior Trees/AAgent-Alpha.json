@@ -12,7 +12,7 @@
     "spawn_point": "SpawnAlpha",
     "debug_mode": true,
     "manual_control": false,
-    "initial_task": "",
+    "initial_task": "bt:BTAlone",
     "ray_perception_sensor_param": [2,45,0,5]
   },
   "Misc": {
