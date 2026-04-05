@@ -2,9 +2,14 @@
 """
 Reusable goal classes for all behaviour tree scenarios
 
-Each goal is an async coroutine launched by a BT node via asyncio.create_task 
-and polled each tick Goals for Scenario Alone (MoveToFlower, ReturnToBase, UnloadFlowers) 
-and Scenario Critters (CritterRoam) are grouped by section
+Each goal is an async coroutine launched by a BT node via asyncio.create_task
+and polled each tick Goals for Scenario Alone (MoveToFlower, ReturnToBase, UnloadFlowers),
+Scenario Critters (CritterRoam), and Scenario Collect and Run (EvadeCritter, WalkToBase)
+are grouped by section
+
+CritterRoam accepts a passable parameter in the constructor so each
+BT can declare exactly which tags to ignore during roaming, instead of relying on a
+shared class-level constant
 """
 
 import math
@@ -291,14 +296,22 @@ class CritterRoam:
     Only reacts when the centre ray is blocked to prevent the V-shape trap
     where alternating side hits cause infinite turning, left/right counts
     decide which way to turn when the centre ray fires
+
+    PLAN 2 CHANGE: accepts a passable parameter so each BT can declare
+    exactly which tags to ignore during roaming
+
+    Params:
+        a_agent: agent reference
+        passable: set of tags to walk through, defaults to {"Astronaut", "AlienFlower"}
     """
 
-    PASSABLE = {"Astronaut", "AlienFlower"} # walk through these, do not dodge
+    DEFAULT_PASSABLE = {"Astronaut", "AlienFlower"}
 
-    def __init__(self, a_agent):
+    def __init__(self, a_agent, passable=None):
         self.a_agent = a_agent
         self.rc_sensor = a_agent.rc_sensor
         self.i_state = a_agent.i_state
+        self.passable = passable if passable is not None else self.DEFAULT_PASSABLE
 
     def _scan(self):
         """Returns (centre_blocked, left_blocked, right_blocked) skipping passable tags"""
@@ -312,7 +325,7 @@ class CritterRoam:
             if not hits[i]:
                 continue
             tag = obj_info[i].get("tag") if obj_info[i] else None
-            if tag in self.PASSABLE:
+            if tag in self.passable:
                 continue
             angle = angles[i]
             if angle == 0:
@@ -357,3 +370,75 @@ class CritterRoam:
             print("***** CritterRoam CANCELLED")
             await self.a_agent.send_message("action", "ntm")
             await self.a_agent.send_message("action", "nt")
+
+
+# --- SECTION: Scenario Collect and Run goals ---
+
+class EvadeCritter:
+    """
+    Evasion manoeuvre: stop, turn roughly 180 degrees, sprint away
+    Uses time-based turning to avoid heading wrap issues near 0/360
+    Returns True when the sprint completes
+    """
+
+    SPRINT_DURATION = 6.0 # seconds to sprint after turning
+
+    def __init__(self, a_agent):
+        self.a_agent = a_agent
+        self.i_state = a_agent.i_state
+
+    async def run(self):
+        try:
+            await self.a_agent.send_message("action", "ntm") # halt current movement
+            await self.a_agent.send_message("action", "nt")
+
+            await self.a_agent.send_message("action", "tr") # time-based 180 turn
+            await asyncio.sleep(1.0)
+            await self.a_agent.send_message("action", "nt")
+
+            # --- Sprint away ---
+            start_pos = self.a_agent.i_state.position
+            await self.a_agent.send_message("action", "mf")
+            previous_dist = 0.0
+            elapsed = 0.0
+            while elapsed < self.SPRINT_DURATION:
+                await asyncio.sleep(0.3)
+                elapsed += 0.3
+                current_dist = calculate_distance(start_pos, self.a_agent.i_state.position)
+                if current_dist == previous_dist: # stuck against wall, stop early
+                    break
+                previous_dist = current_dist
+
+            await self.a_agent.send_message("action", "ntm")
+            return True
+
+        except asyncio.CancelledError:
+            print("***** EvadeCritter CANCELLED")
+            await self.a_agent.send_message("action", "ntm")
+            await self.a_agent.send_message("action", "nt")
+
+
+class WalkToBase:
+    """
+    Navigates to BaseAlpha using walk_to (NavMesh) instead of teleport
+    Required for Collect and Run so the evade branch can interrupt mid-navigation
+    Returns True on arrival
+    """
+
+    def __init__(self, a_agent, base_name="BaseAlpha"):
+        self.a_agent = a_agent
+        self.i_state = a_agent.i_state
+        self.base_name = base_name
+
+    async def run(self):
+        try:
+            await self.a_agent.send_message("action", f"walk_to,{self.base_name}")
+            while True:
+                await asyncio.sleep(0.5)
+                if self.i_state.currentNamedLoc == self.base_name:
+                    return True
+                if not self.i_state.onRoute and self.i_state.currentNamedLoc != self.base_name:
+                    await self.a_agent.send_message("action", f"walk_to,{self.base_name}") # retry if navigation ended without arriving
+        except asyncio.CancelledError:
+            print("***** WalkToBase CANCELLED")
+            await self.a_agent.send_message("action", "ntm")

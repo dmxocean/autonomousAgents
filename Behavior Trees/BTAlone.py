@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Behaviour Tree for Scenario 1 (Alone)
+Behaviour Tree for Scenario (Alone)
 
 The astronaut wanders the environment collecting AlienFlowers 
 and returning to BaseAlpha when the inventory reaches MAX_FLOWERS

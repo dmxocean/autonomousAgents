@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Behaviour tree for Scenario 2 (Critters)
+Behaviour tree for Scenario (Critters)
 
 The critter wanders the environment and attacks the astronaut on sight
 
@@ -13,6 +13,9 @@ Root is a memory=False Selector so it re-evaluates from the top every tick:
   ├── BN_FleeBehaviour    SUCCESS while fleeing, FAILURE otherwise
   ├── BN_ChaseBehaviour   detects + chases + bites
   └── BN_CritterRoam      wander with obstacle avoidance (Goals_BT_Basic.CritterRoam)
+
+PASSABLE_TAGS_CRITTER includes "CritterMantaRay" and
+BN_CritterRoam passes an explicit passable set to CritterRoam constructor
 """
 
 import asyncio
@@ -34,10 +37,12 @@ STATE_ROAM = "roam"
 STATE_CHASE = "chase"
 STATE_FLEE = "flee"
 
-PASSABLE_TAGS_CRITTER = {DETECT_TAG} # tags that should not trigger obstacle avoidance
+PASSABLE_TAGS_CRITTER = {DETECT_TAG, "CritterMantaRay"} # critters don't dodge each other
 FORWARD_CONE_DEG = 30 # only check rays within this cone for obstacles
 OBSTACLE_DIST_THRESHOLD = 0.25 # ignore obstacles further than this
 DODGE_ROTATE_TIME = 0.1 # seconds to rotate when dodging an obstacle
+
+CRITTER_ROAM_PASSABLE = {"Astronaut", "CritterMantaRay"} # critters dodge flowers but ignore astronauts (chase handles them) and each other
 
 
 # --- SECTION: Shared sensor helpers ---
@@ -248,7 +253,7 @@ class BN_CritterRoam(pt.behaviour.Behaviour):
 
     def initialise(self):
         self.my_goal = asyncio.create_task(
-            Goals_BT_Basic.CritterRoam(self.my_agent).run() # loops forever until cancelled by a higher priority branch
+            Goals_BT_Basic.CritterRoam(self.my_agent, passable=CRITTER_ROAM_PASSABLE).run() # PLAN 2: explicit passable set
         )
 
     def update(self):
