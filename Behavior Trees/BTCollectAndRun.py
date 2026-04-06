@@ -25,7 +25,7 @@ import Goals_BT_Basic
 import Sensors
 
 
-ASTRO_ROAM_PASSABLE = {"AlienFlower", "CritterMantaRay"} # PLAN 2: astronaut ignores flowers and critters during roaming
+ASTRO_ROAM_PASSABLE = {"AlienFlower", "CritterMantaRay"} # objects the astronaut can ignore during the roaming phase
 
 
 # --- SECTION: Condition nodes ---
@@ -239,7 +239,7 @@ class BN_AstroRoam(pt.behaviour.Behaviour):
 
     def initialise(self):
         self.my_goal = asyncio.create_task(
-            Goals_BT_Basic.CritterRoam(self.my_agent, passable=ASTRO_ROAM_PASSABLE).run() # PLAN 2: explicit passable set for astronaut
+            Goals_BT_Basic.CritterRoam(self.my_agent, passable=ASTRO_ROAM_PASSABLE).run() # roaming with a custom passable set for the astronaut
         )
 
     def update(self):

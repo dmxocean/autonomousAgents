@@ -253,7 +253,7 @@ class BN_CritterRoam(pt.behaviour.Behaviour):
 
     def initialise(self):
         self.my_goal = asyncio.create_task(
-            Goals_BT_Basic.CritterRoam(self.my_agent, passable=CRITTER_ROAM_PASSABLE).run() # PLAN 2: explicit passable set
+            Goals_BT_Basic.CritterRoam(self.my_agent, passable=CRITTER_ROAM_PASSABLE).run() # wander while avoiding obstacles except those in the passable set
         )
 
     def update(self):

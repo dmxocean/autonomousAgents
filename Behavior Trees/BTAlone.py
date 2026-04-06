@@ -214,11 +214,11 @@ class BN_AstroRoam(pt.behaviour.Behaviour):
             if tag == "AlienFlower": # flowers must not trigger avoidance or the agent turns away from its target
                 continue
             angle = angles[i]
-            if angle == 0: # centre ray
+            if abs(angle) < 15: # detected something in the forward cone
                 centre_blocked = True
-            elif angle < 0: # left side rays (negative angles)
+            if angle < 0: # left side rays (negative angles)
                 left_blocked += 1
-            else: # right side rays (positive angles)
+            elif angle > 0: # right side rays (positive angles)
                 right_blocked += 1
         return centre_blocked, left_blocked, right_blocked
 

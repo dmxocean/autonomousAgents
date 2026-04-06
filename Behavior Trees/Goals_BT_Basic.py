@@ -297,7 +297,7 @@ class CritterRoam:
     where alternating side hits cause infinite turning, left/right counts
     decide which way to turn when the centre ray fires
 
-    PLAN 2 CHANGE: accepts a passable parameter so each BT can declare
+    Accepts a passable parameter so each BT can declare
     exactly which tags to ignore during roaming
 
     Params:
@@ -328,11 +328,11 @@ class CritterRoam:
             if tag in self.passable:
                 continue
             angle = angles[i]
-            if angle == 0:
+            if abs(angle) < 15: # detected something in the forward cone
                 centre_blocked = True
-            elif angle < 0:
+            if angle < 0:
                 left_blocked += 1
-            else:
+            elif angle > 0:
                 right_blocked += 1
         return centre_blocked, left_blocked, right_blocked
 
