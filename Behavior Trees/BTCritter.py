@@ -42,7 +42,7 @@ FORWARD_CONE_DEG = 30 # only check rays within this cone for obstacles
 OBSTACLE_DIST_THRESHOLD = 0.25 # ignore obstacles further than this
 DODGE_ROTATE_TIME = 0.1 # seconds to rotate when dodging an obstacle
 
-CRITTER_ROAM_PASSABLE = {"Astronaut", "CritterMantaRay"} # critters dodge flowers but ignore astronauts (chase handles them) and each other
+CRITTER_ROAM_PASSABLE = {"Astronaut"} # critters dodge flowers and other critters, but ignore astronauts (chase handles them)
 
 
 # --- SECTION: Shared sensor helpers ---

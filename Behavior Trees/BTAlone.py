@@ -204,22 +204,37 @@ class BN_AstroRoam(pt.behaviour.Behaviour):
         hits = self.my_agent.rc_sensor.sensor_rays[Sensors.RayCastSensor.HIT]
         obj_info = self.my_agent.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
         angles = self.my_agent.rc_sensor.sensor_rays[Sensors.RayCastSensor.ANGLE]
+        distances = self.my_agent.rc_sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE]
+
         centre_blocked = False
         left_blocked = 0
         right_blocked = 0
+
         for i in range(len(hits)):
             if not hits[i]:
                 continue
+            
             tag = obj_info[i].get("tag") if obj_info[i] else None
             if tag == "AlienFlower": # flowers must not trigger avoidance or the agent turns away from its target
                 continue
+
             angle = angles[i]
-            if abs(angle) < 15: # detected something in the forward cone
+            dist = distances[i]
+
+            if dist > 2.0: # ignore obstacles further than 2 meters for roaming
+                continue
+
+            # PREVENTION: centre ray blocked, or any forward-cone ray critically close
+            if angle == 0 and dist < 1.0: # directly in front
                 centre_blocked = True
-            if angle < 0: # left side rays (negative angles)
+            if abs(angle) <= 45 and dist < 0.7: # imminent diagonal collision counts as blocked
+                centre_blocked = True
+
+            if angle < 0 and abs(angle) <= 45: # obstacle on left within forward cone
                 left_blocked += 1
-            elif angle > 0: # right side rays (positive angles)
+            elif angle > 0 and abs(angle) <= 45: # obstacle on right within forward cone
                 right_blocked += 1
+                
         return centre_blocked, left_blocked, right_blocked
 
     async def _smart_roam(self):
@@ -229,24 +244,23 @@ class BN_AstroRoam(pt.behaviour.Behaviour):
             centre_blocked, left_blocked, right_blocked = self._scan()
 
             if not centre_blocked:
-                # Centre ray clear, keep moving and only steer if a side is blocked
-                if left_blocked > 0 and right_blocked == 0:
-                    await self.my_agent.send_message("action", "tr") # left wall -> nudge right toward centre
-                elif right_blocked > 0 and left_blocked == 0:
-                    await self.my_agent.send_message("action", "tl") # right wall -> nudge left toward centre
+                # PREVENTION (Nudge): steer away from side obstacles while moving
+                if left_blocked > right_blocked:
+                    await self.my_agent.send_message("action", "tr") # steer right
+                elif right_blocked > left_blocked:
+                    await self.my_agent.send_message("action", "tl") # steer left
                 else:
-                    await self.my_agent.send_message("action", "nt") # both clear or both blocked -> go straight
+                    await self.my_agent.send_message("action", "nt") # path clear
                 await asyncio.sleep(0.1)
                 continue
 
-            # Centre ray blocked, must stop and turn before resuming
-            await self.my_agent.send_message("action", "ntm") # stop translation
+            # EMERGENCY: sharp turn while still moving forward
             if left_blocked >= right_blocked:
                 direction = "tr" # more obstacles on left -> turn right
             else:
                 direction = "tl" # more obstacles on right -> turn left
-            turn_secs = random.uniform(0.4, 1.2) # random turn duration to avoid looping
-            await self.my_agent.send_message("action", direction)
+            turn_secs = random.uniform(0.5, 1.0) # sweep away from the obstacle
+            await self.my_agent.send_message("action", direction) # keep mf active, just rotate
             await asyncio.sleep(turn_secs)
             await self.my_agent.send_message("action", "nt") # stop turning
             await self.my_agent.send_message("action", "mf") # resume forward

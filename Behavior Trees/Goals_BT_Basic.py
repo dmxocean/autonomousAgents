@@ -318,53 +318,93 @@ class CritterRoam:
         hits = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.HIT]
         obj_info = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.OBJECT_INFO]
         angles = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.ANGLE]
+        distances = self.rc_sensor.sensor_rays[Sensors.RayCastSensor.DISTANCE]
+
         centre_blocked = False
         left_blocked = 0
         right_blocked = 0
+
         for i in range(len(hits)):
             if not hits[i]:
                 continue
+            
             tag = obj_info[i].get("tag") if obj_info[i] else None
             if tag in self.passable:
                 continue
+
             angle = angles[i]
-            if abs(angle) < 15: # detected something in the forward cone
+            dist = distances[i]
+
+            if dist > 2.0: # ignore obstacles further than 2 meters for roaming
+                continue
+
+            # PREVENTION: centre ray blocked, or any forward-cone ray critically close
+            if angle == 0 and dist < 1.0: # directly in front
                 centre_blocked = True
-            if angle < 0:
+            if abs(angle) <= 45 and dist < 0.7: # imminent diagonal collision counts as blocked
+                centre_blocked = True
+
+            if angle < 0 and abs(angle) <= 45: # obstacle on left within forward cone
                 left_blocked += 1
-            elif angle > 0:
+            elif angle > 0 and abs(angle) <= 45: # obstacle on right within forward cone
                 right_blocked += 1
+                
         return centre_blocked, left_blocked, right_blocked
 
     async def run(self):
         """
-        Moves forward continuously and only stops to turn when the centre ray
-        is blocked so the agent does not walk into walls
+        Moves forward continuously. Nudges away from side obstacles.
+        Only stops and turns when the path is directly blocked.
+        Detects if the agent is stuck (not changing position) and forces a turn
         """
         try:
             await self.a_agent.send_message("action", "mf")
+            
+            # For stuck detection
+            prev_pos = self.i_state.position
+            stuck_count = 0
+            
             while True:
                 centre_blocked, left_blocked, right_blocked = self._scan()
 
+                # --- Stuck detection logic ---
+                curr_pos = self.i_state.position
+                dist_moved = calculate_distance(prev_pos, curr_pos)
+                if dist_moved < 0.05: # moved less than 5cm in 0.1s
+                    stuck_count += 1
+                else:
+                    stuck_count = 0
+                prev_pos = curr_pos
+
+                # If stuck for ~0.5 seconds while path looks clear or nudging
+                if stuck_count > 5:
+                    print(f"Agent stuck! Forcing emergency turn...")
+                    centre_blocked = True # force the emergency stop branch
+                    stuck_count = 0
+
                 if not centre_blocked:
-                    await asyncio.sleep(0.1) # centre clear, keep moving even if sides hit
+                    # PREVENTION (Nudge): steer away from side obstacles while moving
+                    if left_blocked > right_blocked:
+                        await self.a_agent.send_message("action", "tr") # steer right
+                    elif right_blocked > left_blocked:
+                        await self.a_agent.send_message("action", "tl") # steer left
+                    else:
+                        await self.a_agent.send_message("action", "nt") # path clear
+                    await asyncio.sleep(0.1)
                     continue
 
-                # --- Obstacle avoidance turn ---
-                await self.a_agent.send_message("action", "ntm") # stop before turning
-
-                if left_blocked > right_blocked:
-                    direction = "tr" # more blocked on left -> turn right
-                elif right_blocked > left_blocked:
-                    direction = "tl" # more blocked on right -> turn left
+                # --- EMERGENCY: sharp turn while still moving forward ---
+                if left_blocked >= right_blocked:
+                    direction = "tr"
                 else:
-                    direction = random.choice(["tr", "tl"]) # equal -> random to break symmetry
+                    direction = "tl"
 
-                turn_secs = random.uniform(0.3, 1.5)
-                await self.a_agent.send_message("action", direction)
+                turn_secs = random.uniform(0.5, 1.0) # sweep away from the obstacle
+                await self.a_agent.send_message("action", direction) # keep mf active, just rotate
                 await asyncio.sleep(turn_secs)
                 await self.a_agent.send_message("action", "nt")
-                await self.a_agent.send_message("action", "mf") # resume forward after clearing
+                await self.a_agent.send_message("action", "mf")
+                prev_pos = self.i_state.position # reset after turn
 
         except asyncio.CancelledError:
             print("***** CritterRoam CANCELLED")

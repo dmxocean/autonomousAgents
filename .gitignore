@@ -19,7 +19,6 @@ env/
 *.docx
 *.sqlite
 *.db
-README.md
 
 # Exclude specific directories
 AAgent/
