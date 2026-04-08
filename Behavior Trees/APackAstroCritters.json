@@ -5,8 +5,16 @@
             "num_agents": 1
         },
         {
+            "agent_config_file": "AAgent-Beta.json",
+            "num_agents": 1
+        },
+        {
+            "agent_config_file": "AAgent-Delta.json",
+            "num_agents": 1
+        },
+        {
             "agent_config_file": "AAgent-Critter.json",
-            "num_agents": 5
+            "num_agents": 10
         }
     ]
 }
